@@ -332,12 +332,44 @@ class Board(BaseModel):
     """
     板块
     """
-    board_id = IntegerField(index=True)  #
-    title = CharField()  # 标题
-    description = TextField()  # 描述
+    board_id = IntegerField(index=True)  # 板块id
+    name = CharField()  # 标题
+    total_datasets = IntegerField()  # 数据集个数
+    oss_object = CharField(null=True)  # 源文件oss存储对象 板块图片
+    last_update = DateTimeField(default=datetime.datetime.now)  # 最后活跃时间
 
     class Meta:
         db_table = 'board'
+
+    @classmethod
+    def create_board(cls,board_id, name, total_datasets,oss_object,last_update):
+        """
+        创建板块
+        :param board_id:
+        :param name:
+        :param total_datasets:
+        :param oss_object:
+        :param last_update:
+        :return:
+        """
+        try:
+            return cls.create(
+                board_id=board_id,
+                name=name.strip(),
+                total_datasets=total_datasets,
+                oss_object=_nullable_strip(oss_object),
+                last_update = last_update,
+            )
+        except Exception, e:
+            current_app.logger.error(e)
+
+    @classmethod
+    def all_board(cls):
+        pass
+
+    @classmethod
+    def update_board(cls):
+        pass
 
 
 

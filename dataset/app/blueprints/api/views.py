@@ -10,7 +10,37 @@ from ...api_utils import *
 from ...constants import FILE_PREVIEW_ROWS
 from ...utils.preview_util import generate_csv_preview, generate_sqlite_preview
 
+@bp_api.route('/boards/',methods=['GET'])
+def list_boards():
+    '''
+    列出板块
+    :return:
+    '''
+    ids, uuids, board_ids, order_by, page, per_page = map(
+        request.args.get,
+        ('ids', 'uuids', 'board_ids', 'order_by', 'page', 'per_page')
+    )
+    ids = ids.split(',') if ids else None
+    uuids = uuids.split(',') if uuids else None
+    board_ids = board_ids.split(',') if board_ids else None
+    order_by = order_by.split(',') if order_by else None
+    claim_args_digits_string(1202, *filter(None, (page, per_page)))
 
+    select_query = Board.select()
+    if ids:
+        select_query = select_query.where(Board.id << ids)
+    if uuids:
+        select_query = select_query.where(Board.uuid << uuids)
+    if board_ids:
+        select_query = select_query.where(Board.board_id << board_ids)
+    boards = []
+    for obj in Board.iterator(select_query, order_by, page, per_page):
+        item = obj.to_dict()
+        boards.append(item)
+    data = {
+        'boards': boards,
+    }
+    return api_success_response(data)
 
 
 @bp_api.route('/dataset_files/', methods=['POST'])
