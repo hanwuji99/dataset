@@ -35,7 +35,7 @@ def list_boards():
         select_query = select_query.where(Board.board_id << board_ids)
     boards = []
     for obj in Board.iterator(select_query, order_by, page, per_page):
-        item = obj.to_dict(g.fields)
+        item = obj.to_dict()
         # item['']
         print 'item',item
         boards.append(item)
