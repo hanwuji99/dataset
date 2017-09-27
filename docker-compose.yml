@@ -1,0 +1,46 @@
+version: "3"
+
+services:
+
+  dataset:
+    build: ./dataset
+    command: ./wait-for-it.sh dataset-db:3306 --strict -- gunicorn run:app -b 0.0.0.0:80 --log-file - --access-logfile -
+    environment:
+      - FLASK_MYSQL_HOST=dataset-db
+      - FLASK_MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD:-whalerun}
+      - FLASK_REDIS_HOST=redis
+      - FLASK_REDIS_DB=${DATASET_REDIS_DB}
+      - OSS_REGION_ID=${OSS_REGION_ID}
+      - OSS_BUCKET_NAME=${OSS_BUCKET_NAME}
+      - OSS_MOUNT_POINT=${OSS_MOUNT_POINT}/
+    restart: on-failure
+    depends_on:
+      - dataset-db
+    volumes:
+      - ${OSS_MOUNT_POINT}:${OSS_MOUNT_POINT}:ro
+
+  dataset-db:
+    image: lvyaoo/mysql:5.7
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-whalerun}
+      - MYSQL_DATABASE=whalerun_dataset
+    restart: on-failure
+    ports:
+      - "3326:3306"
+    volumes:
+      - ${PERSISTENCE_DIR}/dataset-db:/var/lib/mysql
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

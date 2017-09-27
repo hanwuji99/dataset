@@ -1,0 +1,6 @@
+gunicorn
+Flask
+PyMySQL
+peewee
+redis
+chardet
