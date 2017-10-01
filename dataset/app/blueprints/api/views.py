@@ -1,28 +1,44 @@
 # -*- coding: utf-8 -*-
 
 import os
-
 from flask import current_app, request, g
-
 from . import bp_api
-from ...models import Dataset, DatasetFile,Board
+from ...models import Dataset, DatasetFile, Board
 from ...api_utils import *
 from ...constants import FILE_PREVIEW_ROWS
 from ...utils.preview_util import generate_csv_preview, generate_sqlite_preview
 
-@bp_api.route('/boards/',methods=['GET'])
+
+@bp_api.route('/boards/', methods=['POST'])
+def create_board():
+    '''
+    创建板块
+    :return:
+    '''
+    user_id, name, description, oss_object, last_update, total_datasets = map(g.json.get, (
+        'user_id', 'name', 'description', 'oss_object', 'last_update', 'total_datasets'))
+    claim_args(1401, user_id, name, description, oss_object, last_update, total_datasets)
+    claim_args_int(1402, user_id, total_datasets)
+    claim_args_string(1402, name, description, oss_object, last_update)
+    board = Board.create_board(user_id, name, description, oss_object, last_update, total_datasets)
+    data = {
+        'board': board.to_dict(g.fields)
+    }
+    return api_success_response(data)
+
+
+@bp_api.route('/boards/', methods=['GET'])
 def list_boards():
     '''
     列出板块
     :return:
     '''
-    ids, uuids, board_ids, order_by, page, per_page = map(
+    ids, uuids, order_by, page, per_page = map(
         request.args.get,
-        ('ids', 'uuids', 'board_ids', 'order_by', 'page', 'per_page')
+        ('ids', 'uuids', 'order_by', 'page', 'per_page')
     )
     ids = ids.split(',') if ids else None
     uuids = uuids.split(',') if uuids else None
-    board_ids = board_ids.split(',') if board_ids else None
     order_by = order_by.split(',') if order_by else None
     claim_args_digits_string(1202, *filter(None, (page, per_page)))
 
@@ -31,60 +47,65 @@ def list_boards():
         select_query = select_query.where(Board.id << ids)
     if uuids:
         select_query = select_query.where(Board.uuid << uuids)
-    if board_ids:
-        select_query = select_query.where(Board.board_id << board_ids)
     boards = []
     for obj in Board.iterator(select_query, order_by, page, per_page):
-        item = obj.to_dict()
-        # item['']
-        print 'item',item
+        item = obj.to_dict(g.fields)
         boards.append(item)
     data = {
         'boards': boards,
-        # 'total_datasets':total_datasets,
     }
     return api_success_response(data)
 
 
-@bp_api.route('/dataset_files/', methods=['POST'])
-def create_dataset_files():
+@bp_api.route('/boards/detail/', methods=['POST'])
+def board_datasets():
+    board_id, name, description, oss_object, page, per_page = map(g.json.get,
+                                                                  ('board_id', 'name', 'description', 'oss_object',
+                                                                   'page', 'per_page'))
+    select_query = Dataset.select()
+    select_query = select_query.where(Dataset.id == board_id)
+
+    claim_args_true(1104, select_query)
+    claim_args(1401, board_id, name, description, oss_object, page, per_page)
+    claim_args_int(1402, board_id)
+    claim_args_string(1402, name, description, oss_object)
+    claim_args_digits_string(1202, *filter(None, (page, per_page)))
+
+    datasets = []
+
+    for obj in Dataset.iterator(select_query, page, per_page):
+        item = obj.to_dict(g.fields)
+        datasets.append(item)
+    data = {
+        'datasets': datasets,
+    }
+    return api_success_response(data)
+
+
+@bp_api.route('/datasets/', methods=['POST'])
+def create_dataset():
     """
-    创建数据集文件
+    创建数据集
     :return: 
     """
-    user_id, name, mime_type, description, oss_object, size = map(
-        g.json.get,
-        ('user_id', 'name', 'mime_type', 'description', 'oss_object', 'size')
-    )
-    claim_args(1401, user_id, name, oss_object, size)
-    claim_args_int(1402, user_id, size)
-    claim_args_string(1402, *filter(None, (name, mime_type, description, oss_object)))
+    user_id, board_id, title, description, license, file_ids = map(g.json.get,
+                                                                   ('user_id', 'board_id', 'title', 'description',
+                                                                    'license', 'file_ids'))
+    claim_args(1401, user_id, board_id, title, description, license, file_ids)
+    claim_args_int(1402, user_id, board_id)
+    claim_args_string(1402, title, description, license)
+    claim_args_list(1402, file_ids)
+    claim_args_int(1402, *file_ids)
+    files = list(DatasetFile.iterator(DatasetFile.select().where(DatasetFile.id << file_ids)))
+    for f in files:
+        claim_args_true(1431, f.user_id == user_id and not f.dataset and not f.parent)
 
-    source = current_app.config['OSS']['host'] + oss_object
-    file_path = current_app.config['OSS']['mount_point'] + oss_object
-    claim_args_true(1430, os.path.isfile(file_path))
-
-    if mime_type == 'text/csv' or name.lower().endswith('.csv'):
-        file_format = 'csv'
-        preview = generate_csv_preview(file_path, FILE_PREVIEW_ROWS)
-    elif name.lower().endswith('.db') or name.lower().endswith('.sqlite'):
-        file_format = 'sqlite'
-        _preview = generate_sqlite_preview(file_path, FILE_PREVIEW_ROWS)
-        preview = _preview['db']
-        preview_tables = _preview['tables']
-    else:
-        file_format = None
-        preview = None
-
-    dataset_file = DatasetFile.create_dataset_files(user_id, name, None, mime_type, file_format, description, source, oss_object, size, preview)
-    item = dataset_file.to_dict(g.fields)
-    if file_format == 'sqlite' and preview_tables:
-        item['children'] = []
-        for t in preview_tables:
-            table_file = DatasetFile.create_dataset_files(user_id, t, dataset_file, file_format='table', preview=preview_tables[t])
-            item['children'].append(table_file.to_dict(g.fields))
+    dataset = Dataset.create_dataset(user_id, board_id, title, description, license, len(files))
+    for f in files:
+        f.dataset = dataset
+        f.save()
     data = {
-        'dataset_file': item
+        'dataset': dataset.to_dict(g.fields)
     }
     return api_success_response(data)
 
@@ -137,28 +158,47 @@ def list_datasets():
     return api_success_response(data)
 
 
-@bp_api.route('/datasets/', methods=['POST'])
-def create_dataset():
+@bp_api.route('/dataset_files/', methods=['POST'])
+def create_dataset_files():
     """
-    创建数据集
-    :return: 
+    创建数据集文件
+    :return:
     """
-    user_id, title, description, license, file_ids = map(g.json.get, ('user_id', 'title', 'description', 'license', 'file_ids'))
-    claim_args(1401, user_id, title, description, license, file_ids)
-    claim_args_int(1402, user_id)
-    claim_args_string(1402, title, description, license)
-    claim_args_list(1402, file_ids)
-    claim_args_int(1402, *file_ids)
-    files = list(DatasetFile.iterator(DatasetFile.select().where(DatasetFile.id << file_ids)))
-    for f in files:
-        claim_args_true(1431, f.user_id == user_id and not f.dataset and not f.parent)
+    user_id, name, mime_type, description, oss_object, size = map(
+        g.json.get,
+        ('user_id', 'name', 'mime_type', 'description', 'oss_object', 'size')
+    )
+    claim_args(1401, user_id, name, oss_object, size)
+    claim_args_int(1402, user_id, size)
+    claim_args_string(1402, *filter(None, (name, mime_type, description, oss_object)))
 
-    dataset = Dataset.create_dataset(user_id, title, description, license, len(files))
-    for f in files:
-        f.dataset = dataset
-        f.save()
+    source = current_app.config['OSS']['host'] + oss_object
+    file_path = current_app.config['OSS']['mount_point'] + oss_object
+    claim_args_true(1430, os.path.isfile(file_path))
+
+    if mime_type == 'text/csv' or name.lower().endswith('.csv'):
+        file_format = 'csv'
+        preview = generate_csv_preview(file_path, FILE_PREVIEW_ROWS)
+    elif name.lower().endswith('.db') or name.lower().endswith('.sqlite'):
+        file_format = 'sqlite'
+        _preview = generate_sqlite_preview(file_path, FILE_PREVIEW_ROWS)
+        preview = _preview['db']
+        preview_tables = _preview['tables']
+    else:
+        file_format = None
+        preview = None
+
+    dataset_file = DatasetFile.create_dataset_files(user_id, name, None, mime_type, file_format, description, source,
+                                                    oss_object, size, preview)
+    item = dataset_file.to_dict(g.fields)
+    if file_format == 'sqlite' and preview_tables:
+        item['children'] = []
+        for t in preview_tables:
+            table_file = DatasetFile.create_dataset_files(user_id, t, dataset_file, file_format='table',
+                                                          preview=preview_tables[t])
+            item['children'].append(table_file.to_dict(g.fields))
     data = {
-        'dataset': dataset.to_dict(g.fields)
+        'dataset_file': item
     }
     return api_success_response(data)
 
@@ -170,7 +210,8 @@ def update_dataset(dataset_id):
     :param dataset_id: 
     :return: 
     """
-    user_id, title, description, license, file_ids = map(g.json.get, ('user_id', 'title', 'description', 'license', 'file_ids'))
+    user_id, title, description, license, file_ids = map(g.json.get,
+                                                         ('user_id', 'title', 'description', 'license', 'file_ids'))
     dataset = Dataset.query_by_id(dataset_id)
     claim_args_true(1104, dataset)
     claim_args(1401, user_id, title, description, license, file_ids)
@@ -301,5 +342,3 @@ def update_dataset_total_votes(dataset_id):
         'dataset': dataset.to_dict(g.fields)
     }
     return api_success_response(data)
-
-

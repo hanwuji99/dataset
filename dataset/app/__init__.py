@@ -22,7 +22,7 @@ def create_app():
     db.init(**app.config['MYSQL'])
 
     from .models import models
-    db.create_tables(models, safe=True)
+    db.create_tables(models, safe=False)
 
     from .hooks import before_app_request, after_app_request
     app.before_request(before_app_request)

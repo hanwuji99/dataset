@@ -18,7 +18,6 @@ services:
       - dataset-db
     volumes:
       - ${OSS_MOUNT_POINT}:${OSS_MOUNT_POINT}:ro
-
   dataset-db:
     image: lvyaoo/mysql:5.7
     environment:
@@ -29,6 +28,8 @@ services:
       - "3326:3306"
     volumes:
       - ${PERSISTENCE_DIR}/dataset-db:/var/lib/mysql
+      - /etc/mysql/mysql.conf.d/mysqld.cnf:/etc/mysql/mysql.conf.d/mysqld.cnf
+      
 
 
 

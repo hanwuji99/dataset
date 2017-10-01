@@ -112,6 +112,7 @@
 
     必填数据字段：
         user_id [int]: 用户id
+        board_id [int]: 板块id #
         title [string]: 标题
         description [string]: 描述
         license [string]: 许可证名称

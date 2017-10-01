@@ -10,7 +10,6 @@ from playhouse.shortcuts import model_to_dict
 from . import db
 from .constants import DEFAULT_PER_PAGE
 
-
 _to_set = (lambda r: set(r) if r else set())
 _nullable_strip = (lambda s: s.strip() or None if s else None)
 
@@ -194,7 +193,7 @@ class Dataset(BaseModel):
     数据集
     """
     user_id = IntegerField(index=True)  # 用户id
-
+    board_id = ForeignKeyField(Board, on_delete='CASCADE', null=True)  # 外键联结Board
     title = CharField()  # 标题
     description = TextField()  # 描述
     license = CharField()  # 许可证名称
@@ -218,11 +217,11 @@ class Dataset(BaseModel):
         db_table = 'dataset'
 
     @classmethod
-    def create_dataset(cls, user_id, title, description, license, total_files):
+    def create_dataset(cls, user_id, board_id, title, description, license, total_files):
         """
         创建数据集
-        :param user_id: 
-        :param title: 
+        :param user_id:
+        :param title:
         :param description: 
         :param license: 
         :param total_files: 
@@ -231,6 +230,7 @@ class Dataset(BaseModel):
         try:
             return cls.create(
                 user_id=user_id,
+                board_id=board_id,
                 title=title.strip(),
                 description=description,
                 license=license.strip(),
@@ -271,9 +271,11 @@ class DatasetFile(BaseModel):
     parent = ForeignKeyField('self', related_name='children', on_delete='CASCADE', null=True)  # 外键自联结
 
     name = CharField()  # 文件名/表名
+
     mime_type = CharField(null=True)  # MIME类型
     file_format = CharField(null=True)  # 文件格式
     description = TextField(null=True)  # 描述
+
     source = CharField(null=True)  # 源文件url
     oss_object = CharField(null=True)  # 源文件oss存储对象
     size = BigIntegerField(null=True)  # 源文件大小，以字节记
@@ -332,45 +334,30 @@ class Board(BaseModel):
     """
     板块
     """
-    board_id = IntegerField(index=True)  # 板块id
+    user_id = IntegerField(index=True)
     name = CharField()  # 标题
-    total_datasets = IntegerField()  # 数据集个数
-    oss_object = CharField(null=True)  # 源文件oss存储对象 板块图片
+    description = CharField()  # 描述
+    oss_object = CharField(null=True)  # 源文件oss存储对象（板块图标）
     last_update = DateTimeField(default=datetime.datetime.now)  # 最后活跃时间
+    total_datasets = IntegerField()  # 数据集个数
 
     class Meta:
         db_table = 'board'
 
     @classmethod
-    def create_board(cls,board_id, name, total_datasets,oss_object,last_update):
-        """
-        创建板块
-        :param board_id:
-        :param name:
-        :param total_datasets:
-        :param oss_object:
-        :param last_update:
-        :return:
-        """
+    def create_board(cls, user_id, name, description, oss_object, last_update, total_datasets):
         try:
             return cls.create(
-                board_id=board_id,
-                name=name.strip(),
-                total_datasets=total_datasets,
+                user_id=user_id,
+                name=name,
+                description=description,
                 oss_object=_nullable_strip(oss_object),
-                last_update = last_update,
+                last_update=last_update,
+                total_datasets=total_datasets
             )
+
         except Exception, e:
             current_app.logger.error(e)
 
-    @classmethod
-    def all_board(cls):
-        pass
 
-    @classmethod
-    def update_board(cls):
-        pass
-
-
-
-models = [Dataset, DatasetFile,Board]
+models = [Dataset, DatasetFile, Board]
