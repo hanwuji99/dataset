@@ -57,31 +57,6 @@ def list_boards():
     return api_success_response(data)
 
 
-@bp_api.route('/boards/detail/', methods=['POST'])
-def board_datasets():
-    board_id, name, description, oss_object, page, per_page = map(g.json.get,
-                                                                  ('board_id', 'name', 'description', 'oss_object',
-                                                                   'page', 'per_page'))
-    select_query = Dataset.select()
-    select_query = select_query.where(Dataset.id == board_id)
-
-    claim_args_true(1104, select_query)
-    claim_args(1401, board_id, name, description, oss_object, page, per_page)
-    claim_args_int(1402, board_id)
-    claim_args_string(1402, name, description, oss_object)
-    claim_args_digits_string(1202, *filter(None, (page, per_page)))
-
-    datasets = []
-
-    for obj in Dataset.iterator(select_query, page, per_page):
-        item = obj.to_dict(g.fields)
-        datasets.append(item)
-    data = {
-        'datasets': datasets,
-    }
-    return api_success_response(data)
-
-
 @bp_api.route('/datasets/', methods=['POST'])
 def create_dataset():
     """
@@ -110,15 +85,15 @@ def create_dataset():
     return api_success_response(data)
 
 
-@bp_api.route('/datasets/', methods=['GET'])
-def list_datasets():
+@bp_api.route('/boards/<int:board_id>/datasets/', methods=['GET'])
+def list_datasets(board_id):
     """
-    列出数据集
+    列出板块数据集
     :return:
     """
-    ids, uuids, user_ids, order_by, page, per_page, hidden, featured = map(
+    ids, uuids, user_ids,order_by, page, per_page, hidden, featured = map(
         request.args.get,
-        ('ids', 'uuids', 'user_ids', 'order_by', 'page', 'per_page', 'hidden', 'featured')
+        ('ids', 'uuids', 'user_ids','order_by', 'page', 'per_page', 'hidden', 'featured')
     )
     ids = ids.split(',') if ids else None
     uuids = uuids.split(',') if uuids else None
@@ -130,6 +105,8 @@ def list_datasets():
             claim_args_true(1202, _arg in ['0', '1'])
 
     select_query = Dataset.select()
+    if board_id:
+        select_query = select_query.where(Dataset.board == board_id)
     if ids:
         select_query = select_query.where(Dataset.id << ids)
     if uuids:
@@ -342,3 +319,51 @@ def update_dataset_total_votes(dataset_id):
         'dataset': dataset.to_dict(g.fields)
     }
     return api_success_response(data)
+
+#
+# @bp_api.route('/datasets/', methods=['GET'])
+# def list_datasets():
+#     """
+#     列出数据集
+#     :return:
+#     """
+#     ids, uuids, user_ids, order_by, page, per_page, hidden, featured = map(
+#         request.args.get,
+#         ('ids', 'uuids', 'user_ids', 'order_by', 'page', 'per_page', 'hidden', 'featured')
+#     )
+#     ids = ids.split(',') if ids else None
+#     uuids = uuids.split(',') if uuids else None
+#     user_ids = user_ids.split(',') if user_ids else None
+#     order_by = order_by.split(',') if order_by else None
+#     claim_args_digits_string(1202, *filter(None, (page, per_page)))
+#     for _arg in [hidden, featured]:
+#         if _arg:
+#             claim_args_true(1202, _arg in ['0', '1'])
+#
+#     select_query = Dataset.select()
+#     if ids:
+#         select_query = select_query.where(Dataset.id << ids)
+#     if uuids:
+#         select_query = select_query.where(Dataset.uuid << uuids)
+#     if user_ids:
+#         select_query = select_query.where(Dataset.user_id << user_ids)
+#     if hidden:
+#         select_query = select_query.where(Dataset.hidden == bool(int(hidden)))
+#     if featured:
+#         select_query = select_query.where(Dataset.featured == bool(int(featured)))
+#     datasets = []
+#     for obj in Dataset.iterator(select_query, order_by, page, per_page):
+#         item = obj.to_dict(g.fields)
+#         if not g.fields or 'dataset_files' in g.fields:
+#             item['dataset_files'] = []
+#             for _file in DatasetFile.iterator(obj.datasetfile_set.where(DatasetFile.parent.is_null())):
+#                 file_item = _file.to_dict()
+#                 if _file.file_format == 'sqlite':
+#                     file_item['children'] = [_child.to_dict() for _child in DatasetFile.iterator(_file.children)]
+#                 item['dataset_files'].append(file_item)
+#         datasets.append(item)
+#     data = {
+#         'datasets': datasets,
+#         'total': Dataset.count(select_query)
+#     }
+#     return api_success_response(data)

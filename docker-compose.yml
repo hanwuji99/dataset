@@ -29,7 +29,7 @@ services:
     volumes:
       - ${PERSISTENCE_DIR}/dataset-db:/var/lib/mysql
       - /etc/mysql/mysql.conf.d/mysqld.cnf:/etc/mysql/mysql.conf.d/mysqld.cnf
-      
+
 
 
 

@@ -188,12 +188,44 @@ class BaseModel(Model):
         return self.update_time.isoformat()
 
 
+class Board(BaseModel):
+    """
+    板块
+    """
+    user_id = IntegerField(index=True)
+    name = CharField()  # 标题
+    description = CharField()  # 描述
+    oss_object = CharField(null=True)  # 源文件oss存储对象（板块图标）
+    last_update = DateTimeField(default=datetime.datetime.now)  # 最后活跃时间
+    total_datasets = IntegerField()  # 数据集个数
+
+
+    class Meta:
+        db_table = 'board'
+
+    @classmethod
+    def create_board(cls, user_id, name, description, oss_object, last_update, total_datasets):
+        try:
+            return cls.create(
+                user_id=user_id,
+                name=name,
+                description=description,
+                oss_object=_nullable_strip(oss_object),
+                last_update=last_update,
+                total_datasets=total_datasets
+            )
+
+        except Exception, e:
+            current_app.logger.error(e)
+
+
 class Dataset(BaseModel):
     """
     数据集
     """
     user_id = IntegerField(index=True)  # 用户id
-    board_id = ForeignKeyField(Board, on_delete='CASCADE', null=True)  # 外键联结Board
+    board = ForeignKeyField(Board, on_delete='CASCADE', null=True)
+    parent = ForeignKeyField('self', related_name='children', on_delete='CASCADE', null=True)  # 外键自联结
     title = CharField()  # 标题
     description = TextField()  # 描述
     license = CharField()  # 许可证名称
@@ -330,34 +362,6 @@ class DatasetFile(BaseModel):
         return eval(self.preview) if self.preview else []
 
 
-class Board(BaseModel):
-    """
-    板块
-    """
-    user_id = IntegerField(index=True)
-    name = CharField()  # 标题
-    description = CharField()  # 描述
-    oss_object = CharField(null=True)  # 源文件oss存储对象（板块图标）
-    last_update = DateTimeField(default=datetime.datetime.now)  # 最后活跃时间
-    total_datasets = IntegerField()  # 数据集个数
-
-    class Meta:
-        db_table = 'board'
-
-    @classmethod
-    def create_board(cls, user_id, name, description, oss_object, last_update, total_datasets):
-        try:
-            return cls.create(
-                user_id=user_id,
-                name=name,
-                description=description,
-                oss_object=_nullable_strip(oss_object),
-                last_update=last_update,
-                total_datasets=total_datasets
-            )
-
-        except Exception, e:
-            current_app.logger.error(e)
 
 
-models = [Dataset, DatasetFile, Board]
+models = [Board, Dataset, DatasetFile]
