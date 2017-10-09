@@ -106,6 +106,45 @@
     错误码：
         1202
 
+**列出板块＊＊
+    GET  /api/boards/
+
+    可选URL参数：
+        ids: 数据集id，多个值以英文逗号分隔
+        uuids: 数据集uuid，多个值以英文逗号分隔
+        user_ids: 用户id，多个值以英文逗号分隔
+        order_by:
+        page:
+        per_page:
+        hidden: 是否隐藏：0 - 否，1 - 是
+        featured: 是否推荐：0 - 否，1 - 是
+
+    响应数据：
+        datasets [object_array]:
+        total [int]:
+
+    错误码：
+        1202
+
+**列出板块数据集＊＊
+    GET  /api/boards/<int:board_id>/datasets/
+    可选URL参数：
+        ids: 数据集id，多个值以英文逗号分隔
+        uuids: 数据集uuid，多个值以英文逗号分隔
+        user_ids: 用户id，多个值以英文逗号分隔
+        order_by:
+        page:
+        per_page:
+        hidden: 是否隐藏：0 - 否，1 - 是
+        featured: 是否推荐：0 - 否，1 - 是
+
+    响应数据：
+        datasets [object_array]:
+        total [int]:
+
+    错误码：
+        1202
+
 **创建数据集**
 
     POST  /api/datasets/
