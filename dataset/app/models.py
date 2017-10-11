@@ -196,23 +196,18 @@ class Board(BaseModel):
     name = CharField()  # 标题
     description = CharField()  # 描述
     oss_object = CharField(null=True)  # 源文件oss存储对象（板块图标）
-    last_update = DateTimeField(default=datetime.datetime.now)  # 最后活跃时间
-    total_datasets = IntegerField()  # 数据集个数
-
 
     class Meta:
         db_table = 'board'
 
     @classmethod
-    def create_board(cls, user_id, name, description, oss_object, last_update, total_datasets):
+    def create_board(cls, user_id, name, description, oss_object):
         try:
             return cls.create(
                 user_id=user_id,
                 name=name,
                 description=description,
                 oss_object=_nullable_strip(oss_object),
-                last_update=last_update,
-                total_datasets=total_datasets
             )
 
         except Exception, e:
@@ -360,8 +355,6 @@ class DatasetFile(BaseModel):
 
     def array_preview(self):
         return eval(self.preview) if self.preview else []
-
-
 
 
 models = [Board, Dataset, DatasetFile]

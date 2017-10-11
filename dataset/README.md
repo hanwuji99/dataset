@@ -85,6 +85,24 @@
     错误码：
         1401, 1402, 1430
 
+**列出板块＊＊
+    GET  /api/boards/
+
+    可选URL参数：
+        ids: 板块id，多个值以英文逗号分隔
+        uuids: 板块uuid，多个值以英文逗号分隔
+        user_ids: 用户id，多个值以英文逗号分隔
+        order_by:
+        page:
+        per_page:
+
+    响应数据：
+        boards [object_array]:
+        total [int]:
+
+    错误码：
+        1202
+
 **列出数据集**
 
     GET  /api/datasets/
@@ -106,28 +124,10 @@
     错误码：
         1202
 
-**列出板块＊＊
-    GET  /api/boards/
-
-    可选URL参数：
-        ids: 数据集id，多个值以英文逗号分隔
-        uuids: 数据集uuid，多个值以英文逗号分隔
-        user_ids: 用户id，多个值以英文逗号分隔
-        order_by:
-        page:
-        per_page:
-        hidden: 是否隐藏：0 - 否，1 - 是
-        featured: 是否推荐：0 - 否，1 - 是
-
-    响应数据：
-        datasets [object_array]:
-        total [int]:
-
-    错误码：
-        1202
-
 **列出板块数据集＊＊
+
     GET  /api/boards/<int:board_id>/datasets/
+
     可选URL参数：
         ids: 数据集id，多个值以英文逗号分隔
         uuids: 数据集uuid，多个值以英文逗号分隔
@@ -144,6 +144,22 @@
 
     错误码：
         1202
+
+**创建板块
+
+    POST  /api/boards/
+
+    必填数据字段：
+        user_id [int]: 用户id
+        name [string]: 标题
+        description [string]: 描述
+        oss_object [string]: 源文件oss存储对象
+
+    响应数据：
+        board [object]:
+
+    错误码：
+        1401, 1402
 
 **创建数据集**
 

@@ -15,12 +15,12 @@ def create_board():
     创建板块
     :return:
     '''
-    user_id, name, description, oss_object, last_update, total_datasets = map(g.json.get, (
-        'user_id', 'name', 'description', 'oss_object', 'last_update', 'total_datasets'))
-    claim_args(1401, user_id, name, description, oss_object, last_update, total_datasets)
-    claim_args_int(1402, user_id, total_datasets)
-    claim_args_string(1402, name, description, oss_object, last_update)
-    board = Board.create_board(user_id, name, description, oss_object, last_update, total_datasets)
+    user_id, name, description, oss_object = map(g.json.get, (
+        'user_id', 'name', 'description', 'oss_object'))
+    claim_args(1401, user_id, name, description, oss_object)
+    claim_args_int(1402, user_id)
+    claim_args_string(1402, name, description, oss_object)
+    board = Board.create_board(user_id, name, description, oss_object)
     data = {
         'board': board.to_dict(g.fields)
     }
@@ -42,13 +42,14 @@ def list_boards():
     order_by = order_by.split(',') if order_by else None
     claim_args_digits_string(1202, *filter(None, (page, per_page)))
 
-    select_query = Board.select()
+    select_board_query = Board.select()
     if ids:
-        select_query = select_query.where(Board.id << ids)
+        select_board_query = select_board_query.where(Board.id << ids)
     if uuids:
-        select_query = select_query.where(Board.uuid << uuids)
+        select_board_query = select_board_query.where(Board.uuid << uuids)
+
     boards = []
-    for obj in Board.iterator(select_query, order_by, page, per_page):
+    for obj in Board.iterator(select_board_query, order_by, page, per_page):
         item = obj.to_dict(g.fields)
         boards.append(item)
     data = {
@@ -91,9 +92,9 @@ def list_datasets(board_id):
     列出板块数据集
     :return:
     """
-    ids, uuids, user_ids,order_by, page, per_page, hidden, featured = map(
+    ids, uuids, user_ids, order_by, page, per_page, hidden, featured = map(
         request.args.get,
-        ('ids', 'uuids', 'user_ids','order_by', 'page', 'per_page', 'hidden', 'featured')
+        ('ids', 'uuids', 'user_ids', 'order_by', 'page', 'per_page', 'hidden', 'featured')
     )
     ids = ids.split(',') if ids else None
     uuids = uuids.split(',') if uuids else None
